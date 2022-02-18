@@ -9,6 +9,8 @@ Plugins/Nodes:
 - Node-red-dashboard
 - Node-red-contrib-web-worldmap
 
+Import flow.
+
 Configuration:
 - Create Dashboard Group and Node in config Dialog of a Dashboard Node
 - Make sure all Dashboard nodes are added to it.
@@ -21,7 +23,7 @@ Insert a GWB58 Adress of a Hotspot and the radius (i.e. 150 km) that you want to
 
 ![Clustertool GWB58 and Range Input](https://user-images.githubusercontent.com/62546625/154695135-dc3d98ef-8498-4fb8-aace-28b51b14c265.png)
 
-wait for the witnesses to show up. This takes a while... Hotspots, that get witnessed multiple times, will change their colour on the map. This flow will do 6 iterations (Witnesses of Witnesses). You can see the (total) number of Hotspots rising in the chart.
+Wait for the witnesses to show up. This takes a while... Hotspots, that get witnessed multiple times, will change their colour on the map. This flow will do 6 iterations (Witnesses of Witnesses). You can see the (total) number of Hotspots rising in the chart.
 - if your chosen Hotspot doesn't have witnesses in the last 5 days available in the API, nothing will happen.
 
 ![Clustertool Output open](https://user-images.githubusercontent.com/62546625/154695274-4da7c647-4ec0-43da-a590-881446c546e9.png)
@@ -30,7 +32,7 @@ The Chart will reach a platoo before the last iteration if you found a cluster. 
 
 ![Clustertool Output mark all](https://user-images.githubusercontent.com/62546625/154695838-d649444d-df88-4d05-bd74-1eeaf820c7b0.png)
 
-Open the output button and mark the list of hotspots by tripple-clicking and copy it. THis is your result list.
+Open the output button and mark the list of hotspots by tripple-clicking and copy it. This is your result list.
 
 ![Clustertool zoomed in](https://user-images.githubusercontent.com/62546625/154696942-13201ba2-d20a-447b-beef-20124fd3f330.png)
 
