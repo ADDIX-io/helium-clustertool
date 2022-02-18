@@ -28,7 +28,7 @@ Wait for the witnesses to show up. This takes a while... Hotspots, that get witn
 
 ![Clustertool Output open](https://user-images.githubusercontent.com/62546625/154695274-4da7c647-4ec0-43da-a590-881446c546e9.png)
 
-The Chart will reach a platoo before the last iteration if you found a cluster. If it doesn't reach a platoo the 6 iterations are not enough to get all hotspots within the network you are inspecting. The clusters we found (within a 150 km radius) reached a platoo within 4-5 iterations.
+The Chart will reach a plateau before the last iteration if you found a cluster. If it doesn't reach a plateau the 6 iterations are not enough to get all hotspots within the network you are inspecting. The clusters we found (within a 150 km radius) reached a plateau within 4-5 iterations.
 
 ![Clustertool Output mark all](https://user-images.githubusercontent.com/62546625/154695838-d649444d-df88-4d05-bd74-1eeaf820c7b0.png)
 
