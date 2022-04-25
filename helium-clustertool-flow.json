@@ -1,1 +1,1327 @@
-[{"id":"c8bd8871.becf08","type":"function","z":"7517ba09.c831bc","name":"Iterate Wittness List","func":"const GWB58 = msg.topic.GWB58\n\nmsg.url = \"https://api.helium.io/v1/hotspots/\" + GWB58 + \"/witnesses\";\nmsg.headers = {};\nmsg.headers['USER-AGENT'] = 'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.163 Safari/537.36';\nnode.send(msg);\n\nreturn","outputs":1,"noerr":0,"initialize":"","finalize":"","x":310,"y":280,"wires":[["617385d5.6e4edc"]]},{"id":"76e00f02.57d21","type":"inject","z":"7517ba09.c831bc","name":"","props":[{"p":"payload.GWB58","v":"112QmGxpk1FYKQAVTV6B6brnjMiLGVJ45DSkyevDVzDvkDokHqW3","vt":"str"},{"p":"topic.lat","v":"54.433683993699454","vt":"str"},{"p":"topic.lng","v":"10.089699356618363","vt":"str"}],"repeat":"","crontab":"","once":false,"onceDelay":0.1,"topic":"","payloadType":"str","x":130,"y":280,"wires":[["c8bd8871.becf08"]]},{"id":"617385d5.6e4edc","type":"http request","z":"7517ba09.c831bc","name":"","method":"GET","ret":"txt","paytoqs":"body","url":"","tls":"","persist":false,"proxy":"","authType":"","x":510,"y":280,"wires":[["30446ab7.0dcd2e"]]},{"id":"30446ab7.0dcd2e","type":"json","z":"7517ba09.c831bc","name":"","property":"payload","action":"","pretty":false,"x":670,"y":280,"wires":[["96e05dc4.3cf65"]]},{"id":"7a825961.fbf088","type":"debug","z":"7517ba09.c831bc","name":"","active":false,"tosidebar":true,"console":false,"tostatus":false,"complete":"true","targetType":"full","statusVal":"","statusType":"auto","x":1250,"y":280,"wires":[]},{"id":"35b419dc.62953e","type":"function","z":"7517ba09.c831bc","name":"Iterate Wittness List","func":"const GWB58 = msg.payload.GWB58;\n\nfor (index = 0; index < GWB58.length; index++){\n    msg.url = \"https://api.helium.io/v1/hotspots/\" + GWB58[index] + \"/witnesses\";\n    msg.headers = {};\n    msg.headers['USER-AGENT'] = 'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.163 Safari/537.36';\n    node.send(msg);\n}\nreturn","outputs":1,"noerr":0,"initialize":"","finalize":"","x":170,"y":400,"wires":[["2ab1c29f.736d0e"]]},{"id":"2ab1c29f.736d0e","type":"http request","z":"7517ba09.c831bc","name":"","method":"GET","ret":"txt","paytoqs":"body","url":"","tls":"","persist":false,"proxy":"","authType":"","x":370,"y":400,"wires":[["3fcc28.71d44bd8"]]},{"id":"869c7331.9f5bb8","type":"function","z":"7517ba09.c831bc","name":"Sift usefull Data","func":"var newMsg = { \n    payload : {},\n    topic : {}\n};\nvar GWB58 = [];\nvar lat = [];\nvar lng = [];\n\nfor (index1 = 0; index1 < msg.payload.data.length; index1++){\n        GWB58.push(msg.payload.data[index1].address);\n        lat.push(msg.payload.data[index1].lat);\n        lng.push(msg.payload.data[index1].lng)\n}\nnewMsg.payload.GWB58 = GWB58;\nnewMsg.payload.lat = lat;\nnewMsg.payload.lng = lng;\nnewMsg.topic.lat = msg.topic.lat;\nnewMsg.topic.lng = msg.topic.lng;\nnewMsg.topic.GWB58 = msg.topic.GWB58;\nnewMsg.topic.distance = msg.topic.distance;\n\nreturn newMsg;","outputs":1,"noerr":0,"initialize":"","finalize":"","x":700,"y":400,"wires":[["60c9dd83.b8ac54"]]},{"id":"3fcc28.71d44bd8","type":"json","z":"7517ba09.c831bc","name":"","property":"payload","action":"","pretty":false,"x":530,"y":400,"wires":[["869c7331.9f5bb8"]]},{"id":"60c9dd83.b8ac54","type":"join","z":"7517ba09.c831bc","name":"","mode":"custom","build":"array","property":"payload","propertyType":"msg","key":"payload","joiner":"\\n","joinerType":"str","accumulate":false,"timeout":"5","count":"","reduceRight":false,"reduceExp":"","reduceInit":"","reduceInitType":"","reduceFixup":"","x":870,"y":400,"wires":[["91c6d582.9fbc88"]]},{"id":"b21d9f12.735c08","type":"comment","z":"7517ba09.c831bc","name":"Use a GW ID to create net of wittnesses","info":"","x":230,"y":40,"wires":[]},{"id":"91c6d582.9fbc88","type":"function","z":"7517ba09.c831bc","name":"Apply Distance Filter","func":"var newMsg = { \n    payload : {},\n    topic : {}\n};\nvar distance = msg.topic.distance;\nvar GWB58 = [];\nvar lat = [];\nvar lng = [];\n\nfor (index1 = 0; index1 < msg.payload.length; index1++){\n    for (index2 = 0; index2 < msg.payload[index1].GWB58.length; index2++){\n        if (GWB58.includes(msg.payload[index1].GWB58[index2]) === false) {\n            if (getDistanceFromLatLonInKm(\n                    msg.payload[index1].lat[index2],\n                    msg.payload[index1].lng[index2],\n                    msg.topic.lat,\n                    msg.topic.lng) < distance){\n                        GWB58.push(msg.payload[index1].GWB58[index2]);\n                        lat.push(msg.payload[index1].lat[index2]);\n                        lng.push(msg.payload[index1].lng[index2]); \n                    }\n               \n            }\n    }\n}\n\nfunction getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {\n  var R = 6371; // Radius of the earth in km\n  var dLat = deg2rad(lat2-lat1);  // deg2rad below\n  var dLon = deg2rad(lon2-lon1); \n  var a = \n    Math.sin(dLat/2) * Math.sin(dLat/2) +\n    Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * \n    Math.sin(dLon/2) * Math.sin(dLon/2)\n    ; \n  var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); \n  var d = R * c; // Distance in km\n  return d;\n}\n\nfunction deg2rad(deg) {\n  return deg * (Math.PI/180)\n}\n\nnewMsg.payload.GWB58 = GWB58;\nnewMsg.payload.lat = lat;\nnewMsg.payload.lng = lng;\nnewMsg.topic.lat = msg.topic.lat;\nnewMsg.topic.lng = msg.topic.lng;\nnewMsg.topic.GWB58 = msg.topic.GWB58;\nnewMsg.topic.distance = msg.topic.distance;\n\nreturn newMsg;","outputs":1,"noerr":0,"initialize":"","finalize":"","x":1060,"y":400,"wires":[["fa4963df.cc8e8","7941bc9d.79169c","454a0047.04582"]]},{"id":"fa4963df.cc8e8","type":"debug","z":"7517ba09.c831bc","name":"","active":false,"tosidebar":true,"console":false,"tostatus":false,"complete":"true","targetType":"full","statusVal":"","statusType":"auto","x":1250,"y":400,"wires":[]},{"id":"655bc9d.f2aa738","type":"function","z":"7517ba09.c831bc","name":"Prep Data for Map","func":"\nvar newMsg = {payload : {}};\n\nfunction getRandomColor() {\n  var letters = '0123456789ABCDEF';\n  var color = '#';\n  for (var i = 0; i < 6; i++) {\n    color += letters[Math.floor(Math.random() * 16)];\n  }\n  return color;\n}\n\n\nfor (index = 0; index < msg.payload.GWB58.length; index++ ){\n    newMsg.payload.name = msg.payload.GWB58[index];\n    newMsg.payload.lat = msg.payload.lat[index];\n    newMsg.payload.lon = msg.payload.lng[index];\n    newMsg.payload.icon = \"ship\";\n    newMsg.payload.iconColor = getRandomColor();\n    node.send(newMsg);\n}\n\nreturn;","outputs":1,"noerr":0,"initialize":"","finalize":"","x":1070,"y":220,"wires":[["52f518dc.d49808"]]},{"id":"52f518dc.d49808","type":"ui_worldmap","z":"7517ba09.c831bc","group":"7690e608.a9dc","order":1,"width":20,"height":20,"name":"","lat":"53.551086","lon":"9.993682","zoom":"7","layer":"OSM grey","cluster":"","maxage":"","usermenu":"hide","layers":"hide","panit":"false","panlock":"false","zoomlock":"false","hiderightclick":"true","coords":"none","showgrid":"false","allowFileDrop":"false","path":"/clustertool","x":1270,"y":220,"wires":[]},{"id":"454a0047.04582","type":"link out","z":"7517ba09.c831bc","name":"Clustermap in","links":["3927a622.87a97a"],"x":1215,"y":340,"wires":[]},{"id":"3927a622.87a97a","type":"link in","z":"7517ba09.c831bc","name":"Clustermap out","links":["454a0047.04582","7602c5bd.b9b1ac","e6958387.176c1"],"x":895,"y":160,"wires":[["655bc9d.f2aa738","87161bfd.b998d","6136cf4b.1baae8"]]},{"id":"3c1fa97e.82fade","type":"ui_form","z":"7517ba09.c831bc","name":"","label":"Insert GWB58 here","group":"1c67ed79.35b7bb","order":1,"width":0,"height":0,"options":[{"label":"GWB58","value":"GWB58","type":"text","required":true,"rows":null},{"label":"Search range [km]","value":"distance","type":"text","required":true,"rows":null}],"formValue":{"GWB58":"","distance":""},"payload":"","submit":"submit","cancel":"clear","topic":"payload","topicType":"msg","splitLayout":"","x":170,"y":160,"wires":[["bdae2346.28714"]]},{"id":"62256b6a.9cfc84","type":"ui_gauge","z":"7517ba09.c831bc","name":"","group":"1c67ed79.35b7bb","order":2,"width":6,"height":5,"gtype":"gage","title":"","label":"Gateways","format":"{{value}}","min":0,"max":"1000","colors":["#00b500","#e6e600","#ca3838"],"seg1":"","seg2":"","x":1250,"y":160,"wires":[]},{"id":"87161bfd.b998d","type":"function","z":"7517ba09.c831bc","name":"Get Counter","func":"var newMsg = {payload : {}};\nnewMsg.payload = msg.payload.GWB58.length;\n\nreturn newMsg;","outputs":1,"noerr":0,"initialize":"","finalize":"","x":1090,"y":160,"wires":[["62256b6a.9cfc84","d1ecdcd2.7623a"]]},{"id":"6136cf4b.1baae8","type":"ui_text","z":"7517ba09.c831bc","group":"4419a8e1.8268e","order":1,"width":0,"height":0,"name":"Output the List","label":"","format":"{{msg.payload.GWB58}}","layout":"row-spread","x":1280,"y":40,"wires":[]},{"id":"96e05dc4.3cf65","type":"function","z":"7517ba09.c831bc","name":"Apply Distance Filter","func":"var newMsg = { \n    payload : {},\n    topic : {}\n};\nvar distance = msg.topic.distance;\nvar GWB58 = [];\nvar lat = [];\nvar lng = [];\n\nfor (index1 = 0; index1 < msg.payload.data.length; index1++){\n    if (getDistanceFromLatLonInKm(\n        msg.payload.data[index1].lat,\n        msg.payload.data[index1].lng,\n        msg.topic.lat,\n        msg.topic.lng) < distance)\n        {\n            GWB58.push(msg.payload.data[index1].address);\n            lat.push(msg.payload.data[index1].lat);\n            lng.push(msg.payload.data[index1].lng);\n        }\n}\nnewMsg.payload.GWB58 = GWB58;\nnewMsg.payload.lat = lat;\nnewMsg.payload.lng = lng;\nnewMsg.topic.lat = msg.topic.lat;\nnewMsg.topic.lng = msg.topic.lng;\nnewMsg.topic.GWB58 = msg.topic.GWB58;\nnewMsg.topic.distance = msg.topic.distance;\n\nfunction getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {\n  var R = 6371; // Radius of the earth in km\n  var dLat = deg2rad(lat2-lat1);  // deg2rad below\n  var dLon = deg2rad(lon2-lon1); \n  var a = \n    Math.sin(dLat/2) * Math.sin(dLat/2) +\n    Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * \n    Math.sin(dLon/2) * Math.sin(dLon/2)\n    ; \n  var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); \n  var d = R * c; // Distance in km\n  return d;\n}\n\nfunction deg2rad(deg) {\n  return deg * (Math.PI/180)\n}\n\nreturn newMsg;","outputs":1,"noerr":0,"initialize":"","finalize":"","x":1060,"y":280,"wires":[["35b419dc.62953e","7a825961.fbf088","454a0047.04582"]]},{"id":"7941bc9d.79169c","type":"function","z":"7517ba09.c831bc","name":"Iterate Wittness List","func":"const GWB58 = msg.payload.GWB58;\n\nfor (index = 0; index < GWB58.length; index++){\n    msg.url = \"https://api.helium.io/v1/hotspots/\" + GWB58[index] + \"/witnesses\";\n    msg.headers = {};\n    msg.headers['USER-AGENT'] = 'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.163 Safari/537.36';\n    node.send(msg);\n}\nreturn","outputs":1,"noerr":0,"initialize":"","finalize":"","x":170,"y":460,"wires":[["6d005898.1679a8"]]},{"id":"6d005898.1679a8","type":"http request","z":"7517ba09.c831bc","name":"","method":"GET","ret":"txt","paytoqs":"body","url":"","tls":"","persist":false,"proxy":"","authType":"","x":370,"y":460,"wires":[["80eb8e08.e974f8"]]},{"id":"c1e9ba07.06358","type":"function","z":"7517ba09.c831bc","name":"Sift usefull Data","func":"var newMsg = { \n    payload : {},\n    topic : {}\n};\nvar GWB58 = [];\nvar lat = [];\nvar lng = [];\n\nfor (index1 = 0; index1 < msg.payload.data.length; index1++){\n        GWB58.push(msg.payload.data[index1].address);\n        lat.push(msg.payload.data[index1].lat);\n        lng.push(msg.payload.data[index1].lng)\n}\nnewMsg.payload.GWB58 = GWB58;\nnewMsg.payload.lat = lat;\nnewMsg.payload.lng = lng;\nnewMsg.topic.lat = msg.topic.lat;\nnewMsg.topic.lng = msg.topic.lng;\nnewMsg.topic.GWB58 = msg.topic.GWB58;\nnewMsg.topic.distance = msg.topic.distance;\n\nreturn newMsg;","outputs":1,"noerr":0,"initialize":"","finalize":"","x":700,"y":460,"wires":[["b89ba480.87c7"]]},{"id":"80eb8e08.e974f8","type":"json","z":"7517ba09.c831bc","name":"","property":"payload","action":"","pretty":false,"x":530,"y":460,"wires":[["c1e9ba07.06358"]]},{"id":"b89ba480.87c7","type":"join","z":"7517ba09.c831bc","name":"","mode":"custom","build":"array","property":"payload","propertyType":"msg","key":"payload","joiner":"\\n","joinerType":"str","accumulate":false,"timeout":"10","count":"","reduceRight":false,"reduceExp":"","reduceInit":"","reduceInitType":"","reduceFixup":"","x":870,"y":460,"wires":[["45074021.17bf08"]]},{"id":"45074021.17bf08","type":"function","z":"7517ba09.c831bc","name":"Apply Distance Filter","func":"var newMsg = { \n    payload : {},\n    topic : {}\n};\nvar distance = msg.topic.distance;\nvar GWB58 = [];\nvar lat = [];\nvar lng = [];\n\nfor (index1 = 0; index1 < msg.payload.length; index1++){\n    for (index2 = 0; index2 < msg.payload[index1].GWB58.length; index2++){\n        if (GWB58.includes(msg.payload[index1].GWB58[index2]) === false) {\n            if (getDistanceFromLatLonInKm(\n                    msg.payload[index1].lat[index2],\n                    msg.payload[index1].lng[index2],\n                    msg.topic.lat,\n                    msg.topic.lng) < distance){\n                        GWB58.push(msg.payload[index1].GWB58[index2]);\n                        lat.push(msg.payload[index1].lat[index2]);\n                        lng.push(msg.payload[index1].lng[index2]); \n                    }\n               \n            }\n    }\n}\n\nfunction getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {\n  var R = 6371; // Radius of the earth in km\n  var dLat = deg2rad(lat2-lat1);  // deg2rad below\n  var dLon = deg2rad(lon2-lon1); \n  var a = \n    Math.sin(dLat/2) * Math.sin(dLat/2) +\n    Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * \n    Math.sin(dLon/2) * Math.sin(dLon/2)\n    ; \n  var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); \n  var d = R * c; // Distance in km\n  return d;\n}\n\nfunction deg2rad(deg) {\n  return deg * (Math.PI/180)\n}\n\nnewMsg.payload.GWB58 = GWB58;\nnewMsg.payload.lat = lat;\nnewMsg.payload.lng = lng;\nnewMsg.topic.lat = msg.topic.lat;\nnewMsg.topic.lng = msg.topic.lng;\nnewMsg.topic.GWB58 = msg.topic.GWB58;\nnewMsg.topic.distance = msg.topic.distance;\n\nreturn newMsg;","outputs":1,"noerr":0,"initialize":"","finalize":"","x":1060,"y":460,"wires":[["cc161bc3.33a88","7602c5bd.b9b1ac","a8a04c7.8706d3"]]},{"id":"cc161bc3.33a88","type":"debug","z":"7517ba09.c831bc","name":"","active":false,"tosidebar":true,"console":false,"tostatus":false,"complete":"true","targetType":"full","statusVal":"","statusType":"auto","x":1250,"y":460,"wires":[]},{"id":"7602c5bd.b9b1ac","type":"link out","z":"7517ba09.c831bc","name":"Clustermap in","links":["3927a622.87a97a"],"x":1215,"y":520,"wires":[]},{"id":"a8a04c7.8706d3","type":"function","z":"7517ba09.c831bc","name":"Iterate Wittness List","func":"const GWB58 = msg.payload.GWB58;\n\nfor (index = 0; index < GWB58.length; index++){\n    msg.url = \"https://api.helium.io/v1/hotspots/\" + GWB58[index] + \"/witnesses\";\n    msg.headers = {};\n    msg.headers['USER-AGENT'] = 'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.163 Safari/537.36';\n    node.send(msg);\n}\nreturn","outputs":1,"noerr":0,"initialize":"","finalize":"","x":170,"y":580,"wires":[["be30c19c.9b25f"]]},{"id":"be30c19c.9b25f","type":"http request","z":"7517ba09.c831bc","name":"","method":"GET","ret":"txt","paytoqs":"body","url":"","tls":"","persist":false,"proxy":"","authType":"","x":370,"y":580,"wires":[["5dae358d.a3a374"]]},{"id":"d18aca48.1fc43","type":"function","z":"7517ba09.c831bc","name":"Sift usefull Data","func":"var newMsg = { \n    payload : {},\n    topic : {}\n};\nvar GWB58 = [];\nvar lat = [];\nvar lng = [];\n\nfor (index1 = 0; index1 < msg.payload.data.length; index1++){\n        GWB58.push(msg.payload.data[index1].address);\n        lat.push(msg.payload.data[index1].lat);\n        lng.push(msg.payload.data[index1].lng)\n}\nnewMsg.payload.GWB58 = GWB58;\nnewMsg.payload.lat = lat;\nnewMsg.payload.lng = lng;\nnewMsg.topic.lat = msg.topic.lat;\nnewMsg.topic.lng = msg.topic.lng;\nnewMsg.topic.GWB58 = msg.topic.GWB58;\nnewMsg.topic.distance = msg.topic.distance;\n\nreturn newMsg;","outputs":1,"noerr":0,"initialize":"","finalize":"","x":700,"y":580,"wires":[["277ea941.835666"]]},{"id":"5dae358d.a3a374","type":"json","z":"7517ba09.c831bc","name":"","property":"payload","action":"","pretty":false,"x":530,"y":580,"wires":[["d18aca48.1fc43"]]},{"id":"277ea941.835666","type":"join","z":"7517ba09.c831bc","name":"","mode":"custom","build":"array","property":"payload","propertyType":"msg","key":"payload","joiner":"\\n","joinerType":"str","accumulate":false,"timeout":"15","count":"","reduceRight":false,"reduceExp":"","reduceInit":"","reduceInitType":"","reduceFixup":"","x":870,"y":580,"wires":[["6e2ae570.093c94"]]},{"id":"6e2ae570.093c94","type":"function","z":"7517ba09.c831bc","name":"Apply Distance Filter","func":"var newMsg = { \n    payload : {},\n    topic : {}\n};\nvar distance = msg.topic.distance;\nvar GWB58 = [];\nvar lat = [];\nvar lng = [];\n\nfor (index1 = 0; index1 < msg.payload.length; index1++){\n    for (index2 = 0; index2 < msg.payload[index1].GWB58.length; index2++){\n        if (GWB58.includes(msg.payload[index1].GWB58[index2]) === false) {\n            if (getDistanceFromLatLonInKm(\n                    msg.payload[index1].lat[index2],\n                    msg.payload[index1].lng[index2],\n                    msg.topic.lat,\n                    msg.topic.lng) < distance){\n                        GWB58.push(msg.payload[index1].GWB58[index2]);\n                        lat.push(msg.payload[index1].lat[index2]);\n                        lng.push(msg.payload[index1].lng[index2]); \n                    }\n               \n            }\n    }\n}\n\nfunction getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {\n  var R = 6371; // Radius of the earth in km\n  var dLat = deg2rad(lat2-lat1);  // deg2rad below\n  var dLon = deg2rad(lon2-lon1); \n  var a = \n    Math.sin(dLat/2) * Math.sin(dLat/2) +\n    Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * \n    Math.sin(dLon/2) * Math.sin(dLon/2)\n    ; \n  var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); \n  var d = R * c; // Distance in km\n  return d;\n}\n\nfunction deg2rad(deg) {\n  return deg * (Math.PI/180)\n}\n\nnewMsg.payload.GWB58 = GWB58;\nnewMsg.payload.lat = lat;\nnewMsg.payload.lng = lng;\nnewMsg.topic.lat = msg.topic.lat;\nnewMsg.topic.lng = msg.topic.lng;\nnewMsg.topic.GWB58 = msg.topic.GWB58;\nnewMsg.topic.distance = msg.topic.distance;\n\nreturn newMsg;","outputs":1,"noerr":0,"initialize":"","finalize":"","x":1060,"y":580,"wires":[["a55eede3.a730d","9b922087.7ccf2","7602c5bd.b9b1ac"]]},{"id":"a55eede3.a730d","type":"debug","z":"7517ba09.c831bc","name":"","active":false,"tosidebar":true,"console":false,"tostatus":false,"complete":"true","targetType":"full","statusVal":"","statusType":"auto","x":1250,"y":580,"wires":[]},{"id":"bdae2346.28714","type":"function","z":"7517ba09.c831bc","name":"Initial Wittness List","func":"const GWB58 = msg.payload.GWB58\n\nmsg.url = \"https://api.helium.io/v1/hotspots/\" + GWB58;\nmsg.headers = {};\nmsg.headers['USER-AGENT'] = 'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.163 Safari/537.36';\nnode.send(msg);\n\nreturn","outputs":1,"noerr":0,"initialize":"","finalize":"","x":310,"y":220,"wires":[["d9dee6d5.8603d8"]]},{"id":"1e101a05.cbad06","type":"inject","z":"7517ba09.c831bc","name":"","props":[{"p":"payload.GWB58","v":"112QmGxpk1FYKQAVTV6B6brnjMiLGVJ45DSkyevDVzDvkDokHqW3","vt":"str"}],"repeat":"","crontab":"","once":false,"onceDelay":0.1,"topic":"","payloadType":"str","x":130,"y":220,"wires":[["bdae2346.28714"]]},{"id":"d9dee6d5.8603d8","type":"http request","z":"7517ba09.c831bc","name":"","method":"GET","ret":"txt","paytoqs":"body","url":"","tls":"","persist":false,"proxy":"","authType":"","x":510,"y":220,"wires":[["60a982f3.905a94"]]},{"id":"60a982f3.905a94","type":"json","z":"7517ba09.c831bc","name":"","property":"payload","action":"","pretty":false,"x":670,"y":220,"wires":[["aac11110.fe248"]]},{"id":"aac11110.fe248","type":"function","z":"7517ba09.c831bc","name":"Sift usefull Data","func":"var newMsg = { topic : {}};\nnewMsg.topic.lng = msg.payload.data.lng;\nnewMsg.topic.lat = msg.payload.data.lat;\nnewMsg.topic.GWB58 = msg.payload.data.address;\nnewMsg.topic.distance = msg.topic.distance;\n\nreturn newMsg;","outputs":1,"noerr":0,"initialize":"","finalize":"","x":840,"y":220,"wires":[["c8bd8871.becf08"]]},{"id":"9b922087.7ccf2","type":"function","z":"7517ba09.c831bc","name":"Iterate Wittness List","func":"const GWB58 = msg.payload.GWB58;\n\nfor (index = 0; index < GWB58.length; index++){\n    msg.url = \"https://api.helium.io/v1/hotspots/\" + GWB58[index] + \"/witnesses\";\n    msg.headers = {};\n    msg.headers['USER-AGENT'] = 'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.163 Safari/537.36';\n    node.send(msg);\n}\nreturn","outputs":1,"noerr":0,"initialize":"","finalize":"","x":170,"y":640,"wires":[["b8245c1a.f19a"]]},{"id":"b8245c1a.f19a","type":"http request","z":"7517ba09.c831bc","name":"","method":"GET","ret":"txt","paytoqs":"body","url":"","tls":"","persist":false,"proxy":"","authType":"","x":370,"y":640,"wires":[["c41a4bfb.953918"]]},{"id":"5986cd7f.6742f4","type":"function","z":"7517ba09.c831bc","name":"Sift usefull Data","func":"var newMsg = { \n    payload : {},\n    topic : {}\n};\nvar GWB58 = [];\nvar lat = [];\nvar lng = [];\n\nfor (index1 = 0; index1 < msg.payload.data.length; index1++){\n        GWB58.push(msg.payload.data[index1].address);\n        lat.push(msg.payload.data[index1].lat);\n        lng.push(msg.payload.data[index1].lng)\n}\nnewMsg.payload.GWB58 = GWB58;\nnewMsg.payload.lat = lat;\nnewMsg.payload.lng = lng;\nnewMsg.topic.lat = msg.topic.lat;\nnewMsg.topic.lng = msg.topic.lng;\nnewMsg.topic.GWB58 = msg.topic.GWB58;\nnewMsg.topic.distance = msg.topic.distance;\n\nreturn newMsg;","outputs":1,"noerr":0,"initialize":"","finalize":"","x":700,"y":640,"wires":[["2e565979.08f7b6"]]},{"id":"c41a4bfb.953918","type":"json","z":"7517ba09.c831bc","name":"","property":"payload","action":"","pretty":false,"x":530,"y":640,"wires":[["5986cd7f.6742f4"]]},{"id":"2e565979.08f7b6","type":"join","z":"7517ba09.c831bc","name":"","mode":"custom","build":"array","property":"payload","propertyType":"msg","key":"payload","joiner":"\\n","joinerType":"str","accumulate":false,"timeout":"20","count":"","reduceRight":false,"reduceExp":"","reduceInit":"","reduceInitType":"","reduceFixup":"","x":870,"y":640,"wires":[["6a736544.7e590c"]]},{"id":"6a736544.7e590c","type":"function","z":"7517ba09.c831bc","name":"Apply Distance Filter","func":"var newMsg = { \n    payload : {},\n    topic : {}\n};\nvar distance = msg.topic.distance;\nvar GWB58 = [];\nvar lat = [];\nvar lng = [];\n\nfor (index1 = 0; index1 < msg.payload.length; index1++){\n    for (index2 = 0; index2 < msg.payload[index1].GWB58.length; index2++){\n        if (GWB58.includes(msg.payload[index1].GWB58[index2]) === false) {\n            if (getDistanceFromLatLonInKm(\n                    msg.payload[index1].lat[index2],\n                    msg.payload[index1].lng[index2],\n                    msg.topic.lat,\n                    msg.topic.lng) < distance){\n                        GWB58.push(msg.payload[index1].GWB58[index2]);\n                        lat.push(msg.payload[index1].lat[index2]);\n                        lng.push(msg.payload[index1].lng[index2]); \n                    }\n               \n            }\n    }\n}\n\nfunction getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {\n  var R = 6371; // Radius of the earth in km\n  var dLat = deg2rad(lat2-lat1);  // deg2rad below\n  var dLon = deg2rad(lon2-lon1); \n  var a = \n    Math.sin(dLat/2) * Math.sin(dLat/2) +\n    Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * \n    Math.sin(dLon/2) * Math.sin(dLon/2)\n    ; \n  var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); \n  var d = R * c; // Distance in km\n  return d;\n}\n\nfunction deg2rad(deg) {\n  return deg * (Math.PI/180)\n}\n\nnewMsg.payload.GWB58 = GWB58;\nnewMsg.payload.lat = lat;\nnewMsg.payload.lng = lng;\nnewMsg.topic.lat = msg.topic.lat;\nnewMsg.topic.lng = msg.topic.lng;\nnewMsg.topic.GWB58 = msg.topic.GWB58;\nnewMsg.topic.distance = msg.topic.distance;\n\nreturn newMsg;","outputs":1,"noerr":0,"initialize":"","finalize":"","x":1060,"y":640,"wires":[["efe0eadf.179818","e6958387.176c1","168d0019.e4bbb"]]},{"id":"efe0eadf.179818","type":"debug","z":"7517ba09.c831bc","name":"","active":false,"tosidebar":true,"console":false,"tostatus":false,"complete":"true","targetType":"full","statusVal":"","statusType":"auto","x":1250,"y":640,"wires":[]},{"id":"e6958387.176c1","type":"link out","z":"7517ba09.c831bc","name":"Clustermap in","links":["3927a622.87a97a"],"x":1215,"y":700,"wires":[]},{"id":"d1ecdcd2.7623a","type":"ui_chart","z":"7517ba09.c831bc","name":"","group":"1c67ed79.35b7bb","order":2,"width":0,"height":0,"label":"","chartType":"line","legend":"false","xformat":"auto","interpolate":"linear","nodata":"","dot":false,"ymin":"","ymax":"","removeOlder":1,"removeOlderPoints":"7","removeOlderUnit":"3600","cutout":0,"useOneColor":false,"useUTC":false,"colors":["#1f77b4","#aec7e8","#ff7f0e","#2ca02c","#98df8a","#d62728","#ff9896","#9467bd","#c5b0d5"],"outputs":1,"useDifferentColor":false,"x":1250,"y":100,"wires":[[]]},{"id":"168d0019.e4bbb","type":"function","z":"7517ba09.c831bc","name":"Iterate Wittness List","func":"const GWB58 = msg.payload.GWB58;\n\nfor (index = 0; index < GWB58.length; index++){\n    msg.url = \"https://api.helium.io/v1/hotspots/\" + GWB58[index] + \"/witnesses\";\n    msg.headers = {};\n    msg.headers['USER-AGENT'] = 'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.163 Safari/537.36';\n    node.send(msg);\n}\nreturn","outputs":1,"noerr":0,"initialize":"","finalize":"","x":170,"y":760,"wires":[["4e5b4379.a77344"]]},{"id":"4e5b4379.a77344","type":"http request","z":"7517ba09.c831bc","name":"","method":"GET","ret":"txt","paytoqs":"body","url":"","tls":"","persist":false,"proxy":"","authType":"","x":370,"y":760,"wires":[["c9c8ac09.ab5ef8"]]},{"id":"cb0e2dbc.405a08","type":"function","z":"7517ba09.c831bc","name":"Sift usefull Data","func":"var newMsg = { \n    payload : {},\n    topic : {}\n};\nvar GWB58 = [];\nvar lat = [];\nvar lng = [];\n\nfor (index1 = 0; index1 < msg.payload.data.length; index1++){\n        GWB58.push(msg.payload.data[index1].address);\n        lat.push(msg.payload.data[index1].lat);\n        lng.push(msg.payload.data[index1].lng)\n}\nnewMsg.payload.GWB58 = GWB58;\nnewMsg.payload.lat = lat;\nnewMsg.payload.lng = lng;\nnewMsg.topic.lat = msg.topic.lat;\nnewMsg.topic.lng = msg.topic.lng;\nnewMsg.topic.GWB58 = msg.topic.GWB58;\nnewMsg.topic.distance = msg.topic.distance;\n\nreturn newMsg;","outputs":1,"noerr":0,"initialize":"","finalize":"","x":700,"y":760,"wires":[["9056f341.ef80b"]]},{"id":"c9c8ac09.ab5ef8","type":"json","z":"7517ba09.c831bc","name":"","property":"payload","action":"","pretty":false,"x":530,"y":760,"wires":[["cb0e2dbc.405a08"]]},{"id":"9056f341.ef80b","type":"join","z":"7517ba09.c831bc","name":"","mode":"custom","build":"array","property":"payload","propertyType":"msg","key":"payload","joiner":"\\n","joinerType":"str","accumulate":false,"timeout":"25","count":"","reduceRight":false,"reduceExp":"","reduceInit":"","reduceInitType":"","reduceFixup":"","x":870,"y":760,"wires":[["c37be429.e560d8"]]},{"id":"c37be429.e560d8","type":"function","z":"7517ba09.c831bc","name":"Apply Distance Filter","func":"var newMsg = { \n    payload : {},\n    topic : {}\n};\nvar distance = msg.topic.distance;\nvar GWB58 = [];\nvar lat = [];\nvar lng = [];\n\nfor (index1 = 0; index1 < msg.payload.length; index1++){\n    for (index2 = 0; index2 < msg.payload[index1].GWB58.length; index2++){\n        if (GWB58.includes(msg.payload[index1].GWB58[index2]) === false) {\n            if (getDistanceFromLatLonInKm(\n                    msg.payload[index1].lat[index2],\n                    msg.payload[index1].lng[index2],\n                    msg.topic.lat,\n                    msg.topic.lng) < distance){\n                        GWB58.push(msg.payload[index1].GWB58[index2]);\n                        lat.push(msg.payload[index1].lat[index2]);\n                        lng.push(msg.payload[index1].lng[index2]); \n                    }\n               \n            }\n    }\n}\n\nfunction getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {\n  var R = 6371; // Radius of the earth in km\n  var dLat = deg2rad(lat2-lat1);  // deg2rad below\n  var dLon = deg2rad(lon2-lon1); \n  var a = \n    Math.sin(dLat/2) * Math.sin(dLat/2) +\n    Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * \n    Math.sin(dLon/2) * Math.sin(dLon/2)\n    ; \n  var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); \n  var d = R * c; // Distance in km\n  return d;\n}\n\nfunction deg2rad(deg) {\n  return deg * (Math.PI/180)\n}\n\nnewMsg.payload.GWB58 = GWB58;\nnewMsg.payload.lat = lat;\nnewMsg.payload.lng = lng;\nnewMsg.topic.lat = msg.topic.lat;\nnewMsg.topic.lng = msg.topic.lng;\nnewMsg.topic.GWB58 = msg.topic.GWB58;\nnewMsg.topic.distance = msg.topic.distance;\n\nreturn newMsg;","outputs":1,"noerr":0,"initialize":"","finalize":"","x":1060,"y":760,"wires":[["14b29652.f1634a","e6958387.176c1"]]},{"id":"14b29652.f1634a","type":"debug","z":"7517ba09.c831bc","name":"","active":false,"tosidebar":true,"console":false,"tostatus":false,"complete":"true","targetType":"full","statusVal":"","statusType":"auto","x":1250,"y":760,"wires":[]},{"id":"7690e608.a9dc","type":"ui_group","name":"Map","tab":"f9d40dc7.f018c","order":1,"disp":false,"width":"20","collapse":false},{"id":"1c67ed79.35b7bb","type":"ui_group","name":"Input","tab":"f9d40dc7.f018c","order":2,"disp":false,"width":6,"collapse":false},{"id":"4419a8e1.8268e","type":"ui_group","name":"output","tab":"f9d40dc7.f018c","order":3,"disp":true,"width":6,"collapse":true},{"id":"f9d40dc7.f018c","type":"ui_tab","name":"Clustertool","icon":"dashboard","disabled":false,"hidden":false}]
+[
+    {
+        "id": "7517ba09.c831bc",
+        "type": "tab",
+        "label": "Helium-Clustertool",
+        "disabled": false,
+        "info": ""
+    },
+    {
+        "id": "c8bd8871.becf08",
+        "type": "function",
+        "z": "7517ba09.c831bc",
+        "name": "Iterate Wittness List",
+        "func": "const GWB58 = msg.topic.GWB58\n\nmsg.url = \"https://helium-api.stakejoy.com/v1/hotspots/\" + GWB58 + \"/witnesses\";\n//msg.url = \"https://api.helium.io/v1/hotspots/\" + GWB58 + \"/witnesses\";\nmsg.headers = {};\nmsg.headers['USER-AGENT'] = 'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.163 Safari/537.36';\nnode.send(msg);\n\nreturn",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "x": 150,
+        "y": 380,
+        "wires": [
+            [
+                "617385d5.6e4edc"
+            ]
+        ]
+    },
+    {
+        "id": "617385d5.6e4edc",
+        "type": "http request",
+        "z": "7517ba09.c831bc",
+        "name": "",
+        "method": "GET",
+        "ret": "txt",
+        "paytoqs": "body",
+        "url": "",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "authType": "",
+        "x": 510,
+        "y": 380,
+        "wires": [
+            [
+                "30446ab7.0dcd2e"
+            ]
+        ]
+    },
+    {
+        "id": "30446ab7.0dcd2e",
+        "type": "json",
+        "z": "7517ba09.c831bc",
+        "name": "",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 650,
+        "y": 380,
+        "wires": [
+            [
+                "96e05dc4.3cf65"
+            ]
+        ]
+    },
+    {
+        "id": "7a825961.fbf088",
+        "type": "debug",
+        "z": "7517ba09.c831bc",
+        "name": "",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1310,
+        "y": 380,
+        "wires": []
+    },
+    {
+        "id": "b21d9f12.735c08",
+        "type": "comment",
+        "z": "7517ba09.c831bc",
+        "name": "Use a GW ID to create net of wittnesses",
+        "info": "",
+        "x": 230,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "655bc9d.f2aa738",
+        "type": "function",
+        "z": "7517ba09.c831bc",
+        "name": "Prep Data for Map",
+        "func": "\nvar newMsg = {payload : {}};\n\nfunction getRandomColor() {\n  var letters = '0123456789ABCDEF';\n  var color = '#';\n  for (var i = 0; i < 6; i++) {\n    color += letters[Math.floor(Math.random() * 16)];\n  }\n  return color;\n}\n\n\nfor (index = 0; index < msg.payload.GWB58.length; index++ ){\n    newMsg.payload.name = msg.payload.GWB58[index];\n    newMsg.payload.lat = msg.payload.lat[index];\n    newMsg.payload.lon = msg.payload.lng[index];\n    newMsg.payload.icon = \"ship\";\n    newMsg.payload.iconColor = getRandomColor();\n    node.send(newMsg);\n}\n\nreturn;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "x": 1070,
+        "y": 220,
+        "wires": [
+            [
+                "52f518dc.d49808"
+            ]
+        ]
+    },
+    {
+        "id": "52f518dc.d49808",
+        "type": "ui_worldmap",
+        "z": "7517ba09.c831bc",
+        "group": "7690e608.a9dc",
+        "order": 1,
+        "width": 20,
+        "height": 20,
+        "name": "",
+        "lat": "53.551086",
+        "lon": "9.993682",
+        "zoom": "7",
+        "layer": "OSM grey",
+        "cluster": "",
+        "maxage": "",
+        "usermenu": "hide",
+        "layers": "hide",
+        "panit": "false",
+        "panlock": "false",
+        "zoomlock": "false",
+        "hiderightclick": "true",
+        "coords": "none",
+        "showgrid": "false",
+        "allowFileDrop": "false",
+        "path": "/clustertool",
+        "x": 1270,
+        "y": 220,
+        "wires": []
+    },
+    {
+        "id": "454a0047.04582",
+        "type": "link out",
+        "z": "7517ba09.c831bc",
+        "name": "Clustermap in",
+        "links": [
+            "3927a622.87a97a"
+        ],
+        "x": 1275,
+        "y": 420,
+        "wires": []
+    },
+    {
+        "id": "3927a622.87a97a",
+        "type": "link in",
+        "z": "7517ba09.c831bc",
+        "name": "Clustermap out",
+        "links": [
+            "454a0047.04582",
+            "7602c5bd.b9b1ac",
+            "e6958387.176c1",
+            "7638d515.642bfc",
+            "59965bd7.087bf4"
+        ],
+        "x": 895,
+        "y": 160,
+        "wires": [
+            [
+                "655bc9d.f2aa738",
+                "87161bfd.b998d",
+                "75c7e5de.c77984"
+            ]
+        ]
+    },
+    {
+        "id": "3c1fa97e.82fade",
+        "type": "ui_form",
+        "z": "7517ba09.c831bc",
+        "name": "",
+        "label": "Insert GWB58 here",
+        "group": "1c67ed79.35b7bb",
+        "order": 1,
+        "width": 0,
+        "height": 0,
+        "options": [
+            {
+                "label": "GWB58",
+                "value": "GWB58",
+                "type": "text",
+                "required": true,
+                "rows": null
+            },
+            {
+                "label": "Search range [km]",
+                "value": "distance",
+                "type": "text",
+                "required": true,
+                "rows": null
+            }
+        ],
+        "formValue": {
+            "GWB58": "",
+            "distance": ""
+        },
+        "payload": "",
+        "submit": "submit",
+        "cancel": "clear",
+        "topic": "payload",
+        "topicType": "msg",
+        "splitLayout": "",
+        "x": 150,
+        "y": 160,
+        "wires": [
+            [
+                "bdae2346.28714"
+            ]
+        ]
+    },
+    {
+        "id": "62256b6a.9cfc84",
+        "type": "ui_gauge",
+        "z": "7517ba09.c831bc",
+        "name": "",
+        "group": "1c67ed79.35b7bb",
+        "order": 2,
+        "width": 6,
+        "height": 5,
+        "gtype": "gage",
+        "title": "",
+        "label": "Gateways",
+        "format": "{{value}}",
+        "min": 0,
+        "max": "1000",
+        "colors": [
+            "#00b500",
+            "#e6e600",
+            "#ca3838"
+        ],
+        "seg1": "",
+        "seg2": "",
+        "x": 1250,
+        "y": 160,
+        "wires": []
+    },
+    {
+        "id": "87161bfd.b998d",
+        "type": "function",
+        "z": "7517ba09.c831bc",
+        "name": "Get Counter",
+        "func": "var newMsg = {payload : {}};\nnewMsg.payload = msg.payload.GWB58.length;\n\nreturn newMsg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "x": 1090,
+        "y": 160,
+        "wires": [
+            [
+                "62256b6a.9cfc84",
+                "d1ecdcd2.7623a"
+            ]
+        ]
+    },
+    {
+        "id": "6136cf4b.1baae8",
+        "type": "ui_text",
+        "z": "7517ba09.c831bc",
+        "group": "4419a8e1.8268e",
+        "order": 1,
+        "width": "6",
+        "height": "19",
+        "name": "Output the List",
+        "label": "",
+        "format": "{{msg.payload.GWB58}}",
+        "layout": "row-spread",
+        "x": 1280,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "96e05dc4.3cf65",
+        "type": "function",
+        "z": "7517ba09.c831bc",
+        "name": "Apply Distance Filter",
+        "func": "var newMsg = { \n    payload : {},\n    topic : {}\n};\nvar distance = msg.topic.distance;\nvar GWB58 = [];\nvar lat = [];\nvar lng = [];\n\nfor (index1 = 0; index1 < msg.payload.data.length; index1++){\n    if (getDistanceFromLatLonInKm(\n        msg.payload.data[index1].lat,\n        msg.payload.data[index1].lng,\n        msg.topic.lat,\n        msg.topic.lng) < distance)\n        {\n            GWB58.push(msg.payload.data[index1].address);\n            lat.push(msg.payload.data[index1].lat);\n            lng.push(msg.payload.data[index1].lng);\n        }\n}\nnewMsg.payload.GWB58 = GWB58;\nnewMsg.payload.lat = lat;\nnewMsg.payload.lng = lng;\nnewMsg.topic.lat = msg.topic.lat;\nnewMsg.topic.lng = msg.topic.lng;\nnewMsg.topic.GWB58 = msg.topic.GWB58;\nnewMsg.topic.distance = msg.topic.distance;\n\nfunction getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {\n  var R = 6371; // Radius of the earth in km\n  var dLat = deg2rad(lat2-lat1);  // deg2rad below\n  var dLon = deg2rad(lon2-lon1); \n  var a = \n    Math.sin(dLat/2) * Math.sin(dLat/2) +\n    Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * \n    Math.sin(dLon/2) * Math.sin(dLon/2)\n    ; \n  var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); \n  var d = R * c; // Distance in km\n  return d;\n}\n\nfunction deg2rad(deg) {\n  return deg * (Math.PI/180)\n}\n\nreturn newMsg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "x": 1120,
+        "y": 380,
+        "wires": [
+            [
+                "7a825961.fbf088",
+                "454a0047.04582",
+                "cdf38076.01ea98"
+            ]
+        ]
+    },
+    {
+        "id": "bdae2346.28714",
+        "type": "function",
+        "z": "7517ba09.c831bc",
+        "name": "Initial Wittness List",
+        "func": "const GWB58 = msg.payload.GWB58\n\nmsg.url = \"https://helium-api.stakejoy.com/v1/hotspots/\" + GWB58;\n//msg.url = \"https://api.helium.io/v1/hotspots/\" + GWB58;\nmsg.headers = {};\nmsg.headers['USER-AGENT'] = 'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.163 Safari/537.36';\nnode.send(msg);\n\nreturn",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "x": 150,
+        "y": 320,
+        "wires": [
+            [
+                "d9dee6d5.8603d8"
+            ]
+        ]
+    },
+    {
+        "id": "1e101a05.cbad06",
+        "type": "inject",
+        "z": "7517ba09.c831bc",
+        "name": "",
+        "props": [
+            {
+                "p": "payload.GWB58",
+                "v": "112QmGxpk1FYKQAVTV6B6brnjMiLGVJ45DSkyevDVzDvkDokHqW3",
+                "vt": "str"
+            },
+            {
+                "p": "topic.distance",
+                "v": "50",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "x": 110,
+        "y": 200,
+        "wires": [
+            [
+                "bdae2346.28714"
+            ]
+        ]
+    },
+    {
+        "id": "d9dee6d5.8603d8",
+        "type": "http request",
+        "z": "7517ba09.c831bc",
+        "name": "",
+        "method": "GET",
+        "ret": "txt",
+        "paytoqs": "body",
+        "url": "",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "authType": "",
+        "x": 510,
+        "y": 320,
+        "wires": [
+            [
+                "60a982f3.905a94"
+            ]
+        ]
+    },
+    {
+        "id": "60a982f3.905a94",
+        "type": "json",
+        "z": "7517ba09.c831bc",
+        "name": "",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 650,
+        "y": 320,
+        "wires": [
+            [
+                "aac11110.fe248"
+            ]
+        ]
+    },
+    {
+        "id": "aac11110.fe248",
+        "type": "function",
+        "z": "7517ba09.c831bc",
+        "name": "Sift usefull Data",
+        "func": "var newMsg = { topic : {}};\nnewMsg.topic.lng = msg.payload.data.lng;\nnewMsg.topic.lat = msg.payload.data.lat;\nnewMsg.topic.GWB58 = msg.payload.data.address;\nnewMsg.topic.distance = msg.topic.distance;\n\nreturn newMsg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "x": 800,
+        "y": 320,
+        "wires": [
+            [
+                "c8bd8871.becf08"
+            ]
+        ]
+    },
+    {
+        "id": "d1ecdcd2.7623a",
+        "type": "ui_chart",
+        "z": "7517ba09.c831bc",
+        "name": "",
+        "group": "1c67ed79.35b7bb",
+        "order": 2,
+        "width": 0,
+        "height": 0,
+        "label": "",
+        "chartType": "line",
+        "legend": "false",
+        "xformat": "auto",
+        "interpolate": "linear",
+        "nodata": "",
+        "dot": false,
+        "ymin": "",
+        "ymax": "",
+        "removeOlder": "5",
+        "removeOlderPoints": "7",
+        "removeOlderUnit": "60",
+        "cutout": 0,
+        "useOneColor": false,
+        "useUTC": false,
+        "colors": [
+            "#1f77b4",
+            "#aec7e8",
+            "#ff7f0e",
+            "#2ca02c",
+            "#98df8a",
+            "#d62728",
+            "#ff9896",
+            "#9467bd",
+            "#c5b0d5"
+        ],
+        "outputs": 1,
+        "useDifferentColor": false,
+        "x": 1250,
+        "y": 100,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "cdf38076.01ea98",
+        "type": "function",
+        "z": "7517ba09.c831bc",
+        "name": "Iterate Wittness List",
+        "func": "var newMsg = { \n    payload : {},\n    topic : {},\n    parts : {}\n};\nconst GWB58 = msg.payload.GWB58;\n\nfor (index = 0; index < GWB58.length; index++){\n    //msg.url = \"https://api.helium.io/v1/hotspots/\" + GWB58[index] + \"/witnesses\";\n    newMsg.url = \"https://helium-api.stakejoy.com/v1/hotspots/\" + GWB58[index] + \"/witnesses\";\n    newMsg.headers = {};\n    newMsg.headers['USER-AGENT'] = 'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.163 Safari/537.36';\n    newMsg.parts.id = msg._msgid;\n    newMsg.parts.index = index;\n    newMsg.parts.count = GWB58.length;\n    newMsg.topic.lat = msg.topic.lat;\n    newMsg.topic.lng = msg.topic.lng;\n    newMsg.topic.GWB58 = msg.topic.GWB58;\n    newMsg.topic.distance = msg.topic.distance;\n    node.send(newMsg);\n}\nreturn",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "x": 150,
+        "y": 460,
+        "wires": [
+            [
+                "2e49f06.cf0cb9"
+            ]
+        ]
+    },
+    {
+        "id": "aaa57ad.4a94b88",
+        "type": "http request",
+        "z": "7517ba09.c831bc",
+        "name": "",
+        "method": "GET",
+        "ret": "txt",
+        "paytoqs": "body",
+        "url": "",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "authType": "",
+        "x": 510,
+        "y": 460,
+        "wires": [
+            [
+                "8496d26f.9f3438"
+            ]
+        ]
+    },
+    {
+        "id": "77914108.69286",
+        "type": "function",
+        "z": "7517ba09.c831bc",
+        "name": "Sift usefull Data",
+        "func": "var newMsg = { \n    payload : {},\n    topic : {},\n    parts : {}\n};\nvar GWB58 = [];\nvar lat = [];\nvar lng = [];\n\nfor (index1 = 0; index1 < msg.payload.data.length; index1++){\n        GWB58.push(msg.payload.data[index1].address);\n        lat.push(msg.payload.data[index1].lat);\n        lng.push(msg.payload.data[index1].lng)\n}\nnewMsg.payload.GWB58 = GWB58;\nnewMsg.payload.lat = lat;\nnewMsg.payload.lng = lng;\nnewMsg.topic.lat = msg.topic.lat;\nnewMsg.topic.lng = msg.topic.lng;\nnewMsg.topic.GWB58 = msg.topic.GWB58;\nnewMsg.topic.distance = msg.topic.distance;\nnewMsg.parts.id = msg.parts.id;\nnewMsg.parts.index = msg.parts.index;\nnewMsg.parts.count = msg.parts.count;\n\n\nreturn newMsg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "x": 800,
+        "y": 460,
+        "wires": [
+            [
+                "90c82333.5d2bf"
+            ]
+        ]
+    },
+    {
+        "id": "8496d26f.9f3438",
+        "type": "json",
+        "z": "7517ba09.c831bc",
+        "name": "",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 650,
+        "y": 460,
+        "wires": [
+            [
+                "77914108.69286"
+            ]
+        ]
+    },
+    {
+        "id": "90c82333.5d2bf",
+        "type": "join",
+        "z": "7517ba09.c831bc",
+        "name": "",
+        "mode": "auto",
+        "build": "array",
+        "property": "payload",
+        "propertyType": "msg",
+        "key": "payload",
+        "joiner": "\\n",
+        "joinerType": "str",
+        "accumulate": false,
+        "timeout": "120",
+        "count": "",
+        "reduceRight": false,
+        "reduceExp": "",
+        "reduceInit": "",
+        "reduceInitType": "",
+        "reduceFixup": "",
+        "x": 950,
+        "y": 460,
+        "wires": [
+            [
+                "f59ff614.88c81"
+            ]
+        ]
+    },
+    {
+        "id": "f59ff614.88c81",
+        "type": "function",
+        "z": "7517ba09.c831bc",
+        "name": "Apply Distance Filter",
+        "func": "var newMsg = { \n    payload : {},\n    topic : {}\n};\nvar distance = msg.topic.distance;\nvar GWB58 = [];\nvar lat = [];\nvar lng = [];\n\nfor (index1 = 0; index1 < msg.payload.length; index1++){\n    for (index2 = 0; index2 < msg.payload[index1].GWB58.length; index2++){\n        if (GWB58.includes(msg.payload[index1].GWB58[index2]) === false) {\n            if (getDistanceFromLatLonInKm(\n                    msg.payload[index1].lat[index2],\n                    msg.payload[index1].lng[index2],\n                    msg.topic.lat,\n                    msg.topic.lng) < distance){\n                        GWB58.push(msg.payload[index1].GWB58[index2]);\n                        lat.push(msg.payload[index1].lat[index2]);\n                        lng.push(msg.payload[index1].lng[index2]); \n                    }\n               \n            }\n    }\n}\n\nfunction getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {\n  var R = 6371; // Radius of the earth in km\n  var dLat = deg2rad(lat2-lat1);  // deg2rad below\n  var dLon = deg2rad(lon2-lon1); \n  var a = \n    Math.sin(dLat/2) * Math.sin(dLat/2) +\n    Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * \n    Math.sin(dLon/2) * Math.sin(dLon/2)\n    ; \n  var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); \n  var d = R * c; // Distance in km\n  return d;\n}\n\nfunction deg2rad(deg) {\n  return deg * (Math.PI/180)\n}\n\nnewMsg.payload.GWB58 = GWB58;\nnewMsg.payload.lat = lat;\nnewMsg.payload.lng = lng;\nnewMsg.topic.lat = msg.topic.lat;\nnewMsg.topic.lng = msg.topic.lng;\nnewMsg.topic.GWB58 = msg.topic.GWB58;\nnewMsg.topic.distance = msg.topic.distance;\n\nreturn newMsg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "x": 1120,
+        "y": 460,
+        "wires": [
+            [
+                "2f1a7de.86f0102",
+                "454a0047.04582",
+                "495eba8f.617c5c"
+            ]
+        ]
+    },
+    {
+        "id": "2f1a7de.86f0102",
+        "type": "debug",
+        "z": "7517ba09.c831bc",
+        "name": "",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1310,
+        "y": 460,
+        "wires": []
+    },
+    {
+        "id": "2e49f06.cf0cb9",
+        "type": "delay",
+        "z": "7517ba09.c831bc",
+        "name": "",
+        "pauseType": "rate",
+        "timeout": "5",
+        "timeoutUnits": "seconds",
+        "rate": "1",
+        "nbRateUnits": "3",
+        "rateUnits": "second",
+        "randomFirst": "1",
+        "randomLast": "5",
+        "randomUnits": "seconds",
+        "drop": false,
+        "x": 340,
+        "y": 460,
+        "wires": [
+            [
+                "aaa57ad.4a94b88"
+            ]
+        ]
+    },
+    {
+        "id": "75c7e5de.c77984",
+        "type": "function",
+        "z": "7517ba09.c831bc",
+        "name": "",
+        "func": "\nvar newMsg = {payload : {\n        GWB58 : []\n    }\n};\n\n\n\nfor (index = 0; index < msg.payload.GWB58.length; index++ ){\n    newMsg.payload.GWB58[index] = msg.payload.GWB58[index] + '<br>';\n    node.send(newMsg);\n}\n\nreturn;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "x": 1100,
+        "y": 40,
+        "wires": [
+            [
+                "6136cf4b.1baae8"
+            ]
+        ]
+    },
+    {
+        "id": "495eba8f.617c5c",
+        "type": "function",
+        "z": "7517ba09.c831bc",
+        "name": "Iterate Wittness List",
+        "func": "var newMsg = { \n    payload : {},\n    topic : {},\n    parts : {}\n};\nconst GWB58 = msg.payload.GWB58;\n\nfor (index = 0; index < GWB58.length; index++){\n    //msg.url = \"https://api.helium.io/v1/hotspots/\" + GWB58[index] + \"/witnesses\";\n    newMsg.url = \"https://helium-api.stakejoy.com/v1/hotspots/\" + GWB58[index] + \"/witnesses\";\n    newMsg.headers = {};\n    newMsg.headers['USER-AGENT'] = 'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.163 Safari/537.36';\n    newMsg.parts.id = msg._msgid;\n    newMsg.parts.index = index;\n    newMsg.parts.count = GWB58.length;\n    newMsg.topic.lat = msg.topic.lat;\n    newMsg.topic.lng = msg.topic.lng;\n    newMsg.topic.GWB58 = msg.topic.GWB58;\n    newMsg.topic.distance = msg.topic.distance;\n    node.send(newMsg);\n}\nreturn",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "x": 150,
+        "y": 540,
+        "wires": [
+            [
+                "635b9ab8.ad84c4"
+            ]
+        ]
+    },
+    {
+        "id": "d415dc43.97ea68",
+        "type": "http request",
+        "z": "7517ba09.c831bc",
+        "name": "",
+        "method": "GET",
+        "ret": "txt",
+        "paytoqs": "body",
+        "url": "",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "authType": "",
+        "x": 510,
+        "y": 540,
+        "wires": [
+            [
+                "1ba8ff54.348361"
+            ]
+        ]
+    },
+    {
+        "id": "d0d2db85.09331",
+        "type": "function",
+        "z": "7517ba09.c831bc",
+        "name": "Sift usefull Data",
+        "func": "var newMsg = { \n    payload : {},\n    topic : {},\n    parts : {}\n};\nvar GWB58 = [];\nvar lat = [];\nvar lng = [];\n\nfor (index1 = 0; index1 < msg.payload.data.length; index1++){\n        GWB58.push(msg.payload.data[index1].address);\n        lat.push(msg.payload.data[index1].lat);\n        lng.push(msg.payload.data[index1].lng)\n}\nnewMsg.payload.GWB58 = GWB58;\nnewMsg.payload.lat = lat;\nnewMsg.payload.lng = lng;\nnewMsg.topic.lat = msg.topic.lat;\nnewMsg.topic.lng = msg.topic.lng;\nnewMsg.topic.GWB58 = msg.topic.GWB58;\nnewMsg.topic.distance = msg.topic.distance;\nnewMsg.parts.id = msg.parts.id;\nnewMsg.parts.index = msg.parts.index;\nnewMsg.parts.count = msg.parts.count;\n\n\nreturn newMsg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "x": 800,
+        "y": 540,
+        "wires": [
+            [
+                "8d06d177.ee4b2"
+            ]
+        ]
+    },
+    {
+        "id": "1ba8ff54.348361",
+        "type": "json",
+        "z": "7517ba09.c831bc",
+        "name": "",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 650,
+        "y": 540,
+        "wires": [
+            [
+                "d0d2db85.09331"
+            ]
+        ]
+    },
+    {
+        "id": "8d06d177.ee4b2",
+        "type": "join",
+        "z": "7517ba09.c831bc",
+        "name": "",
+        "mode": "auto",
+        "build": "array",
+        "property": "payload",
+        "propertyType": "msg",
+        "key": "payload",
+        "joiner": "\\n",
+        "joinerType": "str",
+        "accumulate": false,
+        "timeout": "120",
+        "count": "",
+        "reduceRight": false,
+        "reduceExp": "",
+        "reduceInit": "",
+        "reduceInitType": "",
+        "reduceFixup": "",
+        "x": 950,
+        "y": 540,
+        "wires": [
+            [
+                "a808ab9f.d893b"
+            ]
+        ]
+    },
+    {
+        "id": "a808ab9f.d893b",
+        "type": "function",
+        "z": "7517ba09.c831bc",
+        "name": "Apply Distance Filter",
+        "func": "var newMsg = { \n    payload : {},\n    topic : {}\n};\nvar distance = msg.topic.distance;\nvar GWB58 = [];\nvar lat = [];\nvar lng = [];\n\nfor (index1 = 0; index1 < msg.payload.length; index1++){\n    for (index2 = 0; index2 < msg.payload[index1].GWB58.length; index2++){\n        if (GWB58.includes(msg.payload[index1].GWB58[index2]) === false) {\n            if (getDistanceFromLatLonInKm(\n                    msg.payload[index1].lat[index2],\n                    msg.payload[index1].lng[index2],\n                    msg.topic.lat,\n                    msg.topic.lng) < distance){\n                        GWB58.push(msg.payload[index1].GWB58[index2]);\n                        lat.push(msg.payload[index1].lat[index2]);\n                        lng.push(msg.payload[index1].lng[index2]); \n                    }\n               \n            }\n    }\n}\n\nfunction getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {\n  var R = 6371; // Radius of the earth in km\n  var dLat = deg2rad(lat2-lat1);  // deg2rad below\n  var dLon = deg2rad(lon2-lon1); \n  var a = \n    Math.sin(dLat/2) * Math.sin(dLat/2) +\n    Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * \n    Math.sin(dLon/2) * Math.sin(dLon/2)\n    ; \n  var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); \n  var d = R * c; // Distance in km\n  return d;\n}\n\nfunction deg2rad(deg) {\n  return deg * (Math.PI/180)\n}\n\nnewMsg.payload.GWB58 = GWB58;\nnewMsg.payload.lat = lat;\nnewMsg.payload.lng = lng;\nnewMsg.topic.lat = msg.topic.lat;\nnewMsg.topic.lng = msg.topic.lng;\nnewMsg.topic.GWB58 = msg.topic.GWB58;\nnewMsg.topic.distance = msg.topic.distance;\n\nreturn newMsg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "x": 1120,
+        "y": 540,
+        "wires": [
+            [
+                "de1fc101.f9f408",
+                "61099e4.6239de",
+                "7638d515.642bfc"
+            ]
+        ]
+    },
+    {
+        "id": "de1fc101.f9f408",
+        "type": "debug",
+        "z": "7517ba09.c831bc",
+        "name": "",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1310,
+        "y": 540,
+        "wires": []
+    },
+    {
+        "id": "635b9ab8.ad84c4",
+        "type": "delay",
+        "z": "7517ba09.c831bc",
+        "name": "",
+        "pauseType": "rate",
+        "timeout": "5",
+        "timeoutUnits": "seconds",
+        "rate": "1",
+        "nbRateUnits": "3",
+        "rateUnits": "second",
+        "randomFirst": "1",
+        "randomLast": "5",
+        "randomUnits": "seconds",
+        "drop": false,
+        "x": 340,
+        "y": 540,
+        "wires": [
+            [
+                "d415dc43.97ea68"
+            ]
+        ]
+    },
+    {
+        "id": "61099e4.6239de",
+        "type": "function",
+        "z": "7517ba09.c831bc",
+        "name": "Iterate Wittness List",
+        "func": "var newMsg = { \n    payload : {},\n    topic : {},\n    parts : {}\n};\nconst GWB58 = msg.payload.GWB58;\n\nfor (index = 0; index < GWB58.length; index++){\n    //msg.url = \"https://api.helium.io/v1/hotspots/\" + GWB58[index] + \"/witnesses\";\n    newMsg.url = \"https://helium-api.stakejoy.com/v1/hotspots/\" + GWB58[index] + \"/witnesses\";\n    newMsg.headers = {};\n    newMsg.headers['USER-AGENT'] = 'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.163 Safari/537.36';\n    newMsg.parts.id = msg._msgid;\n    newMsg.parts.index = index;\n    newMsg.parts.count = GWB58.length;\n    newMsg.topic.lat = msg.topic.lat;\n    newMsg.topic.lng = msg.topic.lng;\n    newMsg.topic.GWB58 = msg.topic.GWB58;\n    newMsg.topic.distance = msg.topic.distance;\n    node.send(newMsg);\n}\nreturn",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "x": 150,
+        "y": 620,
+        "wires": [
+            [
+                "d369af04.8a0f18"
+            ]
+        ]
+    },
+    {
+        "id": "471123fb.af95b4",
+        "type": "http request",
+        "z": "7517ba09.c831bc",
+        "name": "",
+        "method": "GET",
+        "ret": "txt",
+        "paytoqs": "body",
+        "url": "",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "authType": "",
+        "x": 510,
+        "y": 620,
+        "wires": [
+            [
+                "95f40095.776ca"
+            ]
+        ]
+    },
+    {
+        "id": "dc56d2ac.372b5",
+        "type": "function",
+        "z": "7517ba09.c831bc",
+        "name": "Sift usefull Data",
+        "func": "var newMsg = { \n    payload : {},\n    topic : {},\n    parts : {}\n};\nvar GWB58 = [];\nvar lat = [];\nvar lng = [];\n\nfor (index1 = 0; index1 < msg.payload.data.length; index1++){\n        GWB58.push(msg.payload.data[index1].address);\n        lat.push(msg.payload.data[index1].lat);\n        lng.push(msg.payload.data[index1].lng)\n}\nnewMsg.payload.GWB58 = GWB58;\nnewMsg.payload.lat = lat;\nnewMsg.payload.lng = lng;\nnewMsg.topic.lat = msg.topic.lat;\nnewMsg.topic.lng = msg.topic.lng;\nnewMsg.topic.GWB58 = msg.topic.GWB58;\nnewMsg.topic.distance = msg.topic.distance;\nnewMsg.parts.id = msg.parts.id;\nnewMsg.parts.index = msg.parts.index;\nnewMsg.parts.count = msg.parts.count;\n\n\nreturn newMsg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "x": 800,
+        "y": 620,
+        "wires": [
+            [
+                "2221b813.9bcde8"
+            ]
+        ]
+    },
+    {
+        "id": "95f40095.776ca",
+        "type": "json",
+        "z": "7517ba09.c831bc",
+        "name": "",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 650,
+        "y": 620,
+        "wires": [
+            [
+                "dc56d2ac.372b5"
+            ]
+        ]
+    },
+    {
+        "id": "2221b813.9bcde8",
+        "type": "join",
+        "z": "7517ba09.c831bc",
+        "name": "",
+        "mode": "auto",
+        "build": "array",
+        "property": "payload",
+        "propertyType": "msg",
+        "key": "payload",
+        "joiner": "\\n",
+        "joinerType": "str",
+        "accumulate": false,
+        "timeout": "120",
+        "count": "",
+        "reduceRight": false,
+        "reduceExp": "",
+        "reduceInit": "",
+        "reduceInitType": "",
+        "reduceFixup": "",
+        "x": 950,
+        "y": 620,
+        "wires": [
+            [
+                "c2324000.aef5c"
+            ]
+        ]
+    },
+    {
+        "id": "c2324000.aef5c",
+        "type": "function",
+        "z": "7517ba09.c831bc",
+        "name": "Apply Distance Filter",
+        "func": "var newMsg = { \n    payload : {},\n    topic : {}\n};\nvar distance = msg.topic.distance;\nvar GWB58 = [];\nvar lat = [];\nvar lng = [];\n\nfor (index1 = 0; index1 < msg.payload.length; index1++){\n    for (index2 = 0; index2 < msg.payload[index1].GWB58.length; index2++){\n        if (GWB58.includes(msg.payload[index1].GWB58[index2]) === false) {\n            if (getDistanceFromLatLonInKm(\n                    msg.payload[index1].lat[index2],\n                    msg.payload[index1].lng[index2],\n                    msg.topic.lat,\n                    msg.topic.lng) < distance){\n                        GWB58.push(msg.payload[index1].GWB58[index2]);\n                        lat.push(msg.payload[index1].lat[index2]);\n                        lng.push(msg.payload[index1].lng[index2]); \n                    }\n               \n            }\n    }\n}\n\nfunction getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {\n  var R = 6371; // Radius of the earth in km\n  var dLat = deg2rad(lat2-lat1);  // deg2rad below\n  var dLon = deg2rad(lon2-lon1); \n  var a = \n    Math.sin(dLat/2) * Math.sin(dLat/2) +\n    Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * \n    Math.sin(dLon/2) * Math.sin(dLon/2)\n    ; \n  var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); \n  var d = R * c; // Distance in km\n  return d;\n}\n\nfunction deg2rad(deg) {\n  return deg * (Math.PI/180)\n}\n\nnewMsg.payload.GWB58 = GWB58;\nnewMsg.payload.lat = lat;\nnewMsg.payload.lng = lng;\nnewMsg.topic.lat = msg.topic.lat;\nnewMsg.topic.lng = msg.topic.lng;\nnewMsg.topic.GWB58 = msg.topic.GWB58;\nnewMsg.topic.distance = msg.topic.distance;\n\nreturn newMsg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "x": 1120,
+        "y": 620,
+        "wires": [
+            [
+                "960b8895.d0b0a8",
+                "7638d515.642bfc",
+                "4b553070.c52b9"
+            ]
+        ]
+    },
+    {
+        "id": "960b8895.d0b0a8",
+        "type": "debug",
+        "z": "7517ba09.c831bc",
+        "name": "",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1310,
+        "y": 620,
+        "wires": []
+    },
+    {
+        "id": "d369af04.8a0f18",
+        "type": "delay",
+        "z": "7517ba09.c831bc",
+        "name": "",
+        "pauseType": "rate",
+        "timeout": "5",
+        "timeoutUnits": "seconds",
+        "rate": "1",
+        "nbRateUnits": "3",
+        "rateUnits": "second",
+        "randomFirst": "1",
+        "randomLast": "5",
+        "randomUnits": "seconds",
+        "drop": false,
+        "x": 340,
+        "y": 620,
+        "wires": [
+            [
+                "471123fb.af95b4"
+            ]
+        ]
+    },
+    {
+        "id": "7638d515.642bfc",
+        "type": "link out",
+        "z": "7517ba09.c831bc",
+        "name": "Clustermap in",
+        "links": [
+            "3927a622.87a97a"
+        ],
+        "x": 1275,
+        "y": 580,
+        "wires": []
+    },
+    {
+        "id": "4b553070.c52b9",
+        "type": "function",
+        "z": "7517ba09.c831bc",
+        "name": "Iterate Wittness List",
+        "func": "var newMsg = { \n    payload : {},\n    topic : {},\n    parts : {}\n};\nconst GWB58 = msg.payload.GWB58;\n\nfor (index = 0; index < GWB58.length; index++){\n    //msg.url = \"https://api.helium.io/v1/hotspots/\" + GWB58[index] + \"/witnesses\";\n    newMsg.url = \"https://helium-api.stakejoy.com/v1/hotspots/\" + GWB58[index] + \"/witnesses\";\n    newMsg.headers = {};\n    newMsg.headers['USER-AGENT'] = 'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.163 Safari/537.36';\n    newMsg.parts.id = msg._msgid;\n    newMsg.parts.index = index;\n    newMsg.parts.count = GWB58.length;\n    newMsg.topic.lat = msg.topic.lat;\n    newMsg.topic.lng = msg.topic.lng;\n    newMsg.topic.GWB58 = msg.topic.GWB58;\n    newMsg.topic.distance = msg.topic.distance;\n    node.send(newMsg);\n}\nreturn",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "x": 150,
+        "y": 700,
+        "wires": [
+            [
+                "68a9441a.2d7194"
+            ]
+        ]
+    },
+    {
+        "id": "231a6a89.610536",
+        "type": "http request",
+        "z": "7517ba09.c831bc",
+        "name": "",
+        "method": "GET",
+        "ret": "txt",
+        "paytoqs": "body",
+        "url": "",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "authType": "",
+        "x": 510,
+        "y": 700,
+        "wires": [
+            [
+                "25927b42.e758d4"
+            ]
+        ]
+    },
+    {
+        "id": "8daf7117.a40d98",
+        "type": "function",
+        "z": "7517ba09.c831bc",
+        "name": "Sift usefull Data",
+        "func": "var newMsg = { \n    payload : {},\n    topic : {},\n    parts : {}\n};\nvar GWB58 = [];\nvar lat = [];\nvar lng = [];\n\nfor (index1 = 0; index1 < msg.payload.data.length; index1++){\n        GWB58.push(msg.payload.data[index1].address);\n        lat.push(msg.payload.data[index1].lat);\n        lng.push(msg.payload.data[index1].lng)\n}\nnewMsg.payload.GWB58 = GWB58;\nnewMsg.payload.lat = lat;\nnewMsg.payload.lng = lng;\nnewMsg.topic.lat = msg.topic.lat;\nnewMsg.topic.lng = msg.topic.lng;\nnewMsg.topic.GWB58 = msg.topic.GWB58;\nnewMsg.topic.distance = msg.topic.distance;\nnewMsg.parts.id = msg.parts.id;\nnewMsg.parts.index = msg.parts.index;\nnewMsg.parts.count = msg.parts.count;\n\n\nreturn newMsg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "x": 800,
+        "y": 700,
+        "wires": [
+            [
+                "1cd9180b.65351"
+            ]
+        ]
+    },
+    {
+        "id": "25927b42.e758d4",
+        "type": "json",
+        "z": "7517ba09.c831bc",
+        "name": "",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 650,
+        "y": 700,
+        "wires": [
+            [
+                "8daf7117.a40d98"
+            ]
+        ]
+    },
+    {
+        "id": "1cd9180b.65351",
+        "type": "join",
+        "z": "7517ba09.c831bc",
+        "name": "",
+        "mode": "auto",
+        "build": "array",
+        "property": "payload",
+        "propertyType": "msg",
+        "key": "payload",
+        "joiner": "\\n",
+        "joinerType": "str",
+        "accumulate": false,
+        "timeout": "120",
+        "count": "",
+        "reduceRight": false,
+        "reduceExp": "",
+        "reduceInit": "",
+        "reduceInitType": "",
+        "reduceFixup": "",
+        "x": 950,
+        "y": 700,
+        "wires": [
+            [
+                "9a3fe8f5.ab9ca"
+            ]
+        ]
+    },
+    {
+        "id": "9a3fe8f5.ab9ca",
+        "type": "function",
+        "z": "7517ba09.c831bc",
+        "name": "Apply Distance Filter",
+        "func": "var newMsg = { \n    payload : {},\n    topic : {}\n};\nvar distance = msg.topic.distance;\nvar GWB58 = [];\nvar lat = [];\nvar lng = [];\n\nfor (index1 = 0; index1 < msg.payload.length; index1++){\n    for (index2 = 0; index2 < msg.payload[index1].GWB58.length; index2++){\n        if (GWB58.includes(msg.payload[index1].GWB58[index2]) === false) {\n            if (getDistanceFromLatLonInKm(\n                    msg.payload[index1].lat[index2],\n                    msg.payload[index1].lng[index2],\n                    msg.topic.lat,\n                    msg.topic.lng) < distance){\n                        GWB58.push(msg.payload[index1].GWB58[index2]);\n                        lat.push(msg.payload[index1].lat[index2]);\n                        lng.push(msg.payload[index1].lng[index2]); \n                    }\n               \n            }\n    }\n}\n\nfunction getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {\n  var R = 6371; // Radius of the earth in km\n  var dLat = deg2rad(lat2-lat1);  // deg2rad below\n  var dLon = deg2rad(lon2-lon1); \n  var a = \n    Math.sin(dLat/2) * Math.sin(dLat/2) +\n    Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * \n    Math.sin(dLon/2) * Math.sin(dLon/2)\n    ; \n  var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); \n  var d = R * c; // Distance in km\n  return d;\n}\n\nfunction deg2rad(deg) {\n  return deg * (Math.PI/180)\n}\n\nnewMsg.payload.GWB58 = GWB58;\nnewMsg.payload.lat = lat;\nnewMsg.payload.lng = lng;\nnewMsg.topic.lat = msg.topic.lat;\nnewMsg.topic.lng = msg.topic.lng;\nnewMsg.topic.GWB58 = msg.topic.GWB58;\nnewMsg.topic.distance = msg.topic.distance;\n\nreturn newMsg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "x": 1120,
+        "y": 700,
+        "wires": [
+            [
+                "838ed153.b7bd7",
+                "8f5feb2f.cdba38",
+                "59965bd7.087bf4"
+            ]
+        ]
+    },
+    {
+        "id": "838ed153.b7bd7",
+        "type": "debug",
+        "z": "7517ba09.c831bc",
+        "name": "",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1310,
+        "y": 700,
+        "wires": []
+    },
+    {
+        "id": "68a9441a.2d7194",
+        "type": "delay",
+        "z": "7517ba09.c831bc",
+        "name": "",
+        "pauseType": "rate",
+        "timeout": "5",
+        "timeoutUnits": "seconds",
+        "rate": "1",
+        "nbRateUnits": "3",
+        "rateUnits": "second",
+        "randomFirst": "1",
+        "randomLast": "5",
+        "randomUnits": "seconds",
+        "drop": false,
+        "x": 340,
+        "y": 700,
+        "wires": [
+            [
+                "231a6a89.610536"
+            ]
+        ]
+    },
+    {
+        "id": "8f5feb2f.cdba38",
+        "type": "function",
+        "z": "7517ba09.c831bc",
+        "name": "Iterate Wittness List",
+        "func": "var newMsg = { \n    payload : {},\n    topic : {},\n    parts : {}\n};\nconst GWB58 = msg.payload.GWB58;\n\nfor (index = 0; index < GWB58.length; index++){\n    //msg.url = \"https://api.helium.io/v1/hotspots/\" + GWB58[index] + \"/witnesses\";\n    newMsg.url = \"https://helium-api.stakejoy.com/v1/hotspots/\" + GWB58[index] + \"/witnesses\";\n    newMsg.headers = {};\n    newMsg.headers['USER-AGENT'] = 'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.163 Safari/537.36';\n    newMsg.parts.id = msg._msgid;\n    newMsg.parts.index = index;\n    newMsg.parts.count = GWB58.length;\n    newMsg.topic.lat = msg.topic.lat;\n    newMsg.topic.lng = msg.topic.lng;\n    newMsg.topic.GWB58 = msg.topic.GWB58;\n    newMsg.topic.distance = msg.topic.distance;\n    node.send(newMsg);\n}\nreturn",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "x": 150,
+        "y": 780,
+        "wires": [
+            [
+                "822fa270.6a3328"
+            ]
+        ]
+    },
+    {
+        "id": "20c371e9.b3e7b6",
+        "type": "http request",
+        "z": "7517ba09.c831bc",
+        "name": "",
+        "method": "GET",
+        "ret": "txt",
+        "paytoqs": "body",
+        "url": "",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "authType": "",
+        "x": 510,
+        "y": 780,
+        "wires": [
+            [
+                "30f89bc1.890084"
+            ]
+        ]
+    },
+    {
+        "id": "3ac4bfb1.047f",
+        "type": "function",
+        "z": "7517ba09.c831bc",
+        "name": "Sift usefull Data",
+        "func": "var newMsg = { \n    payload : {},\n    topic : {},\n    parts : {}\n};\nvar GWB58 = [];\nvar lat = [];\nvar lng = [];\n\nfor (index1 = 0; index1 < msg.payload.data.length; index1++){\n        GWB58.push(msg.payload.data[index1].address);\n        lat.push(msg.payload.data[index1].lat);\n        lng.push(msg.payload.data[index1].lng)\n}\nnewMsg.payload.GWB58 = GWB58;\nnewMsg.payload.lat = lat;\nnewMsg.payload.lng = lng;\nnewMsg.topic.lat = msg.topic.lat;\nnewMsg.topic.lng = msg.topic.lng;\nnewMsg.topic.GWB58 = msg.topic.GWB58;\nnewMsg.topic.distance = msg.topic.distance;\nnewMsg.parts.id = msg.parts.id;\nnewMsg.parts.index = msg.parts.index;\nnewMsg.parts.count = msg.parts.count;\n\n\nreturn newMsg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "x": 800,
+        "y": 780,
+        "wires": [
+            [
+                "bc6ba967.8e2c68"
+            ]
+        ]
+    },
+    {
+        "id": "30f89bc1.890084",
+        "type": "json",
+        "z": "7517ba09.c831bc",
+        "name": "",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 650,
+        "y": 780,
+        "wires": [
+            [
+                "3ac4bfb1.047f"
+            ]
+        ]
+    },
+    {
+        "id": "bc6ba967.8e2c68",
+        "type": "join",
+        "z": "7517ba09.c831bc",
+        "name": "",
+        "mode": "auto",
+        "build": "array",
+        "property": "payload",
+        "propertyType": "msg",
+        "key": "payload",
+        "joiner": "\\n",
+        "joinerType": "str",
+        "accumulate": false,
+        "timeout": "120",
+        "count": "",
+        "reduceRight": false,
+        "reduceExp": "",
+        "reduceInit": "",
+        "reduceInitType": "",
+        "reduceFixup": "",
+        "x": 950,
+        "y": 780,
+        "wires": [
+            [
+                "ad5458ec.5860b"
+            ]
+        ]
+    },
+    {
+        "id": "ad5458ec.5860b",
+        "type": "function",
+        "z": "7517ba09.c831bc",
+        "name": "Apply Distance Filter",
+        "func": "var newMsg = { \n    payload : {},\n    topic : {}\n};\nvar distance = msg.topic.distance;\nvar GWB58 = [];\nvar lat = [];\nvar lng = [];\n\nfor (index1 = 0; index1 < msg.payload.length; index1++){\n    for (index2 = 0; index2 < msg.payload[index1].GWB58.length; index2++){\n        if (GWB58.includes(msg.payload[index1].GWB58[index2]) === false) {\n            if (getDistanceFromLatLonInKm(\n                    msg.payload[index1].lat[index2],\n                    msg.payload[index1].lng[index2],\n                    msg.topic.lat,\n                    msg.topic.lng) < distance){\n                        GWB58.push(msg.payload[index1].GWB58[index2]);\n                        lat.push(msg.payload[index1].lat[index2]);\n                        lng.push(msg.payload[index1].lng[index2]); \n                    }\n               \n            }\n    }\n}\n\nfunction getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {\n  var R = 6371; // Radius of the earth in km\n  var dLat = deg2rad(lat2-lat1);  // deg2rad below\n  var dLon = deg2rad(lon2-lon1); \n  var a = \n    Math.sin(dLat/2) * Math.sin(dLat/2) +\n    Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * \n    Math.sin(dLon/2) * Math.sin(dLon/2)\n    ; \n  var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); \n  var d = R * c; // Distance in km\n  return d;\n}\n\nfunction deg2rad(deg) {\n  return deg * (Math.PI/180)\n}\n\nnewMsg.payload.GWB58 = GWB58;\nnewMsg.payload.lat = lat;\nnewMsg.payload.lng = lng;\nnewMsg.topic.lat = msg.topic.lat;\nnewMsg.topic.lng = msg.topic.lng;\nnewMsg.topic.GWB58 = msg.topic.GWB58;\nnewMsg.topic.distance = msg.topic.distance;\n\nreturn newMsg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "x": 1120,
+        "y": 780,
+        "wires": [
+            [
+                "b6edaae8.db545",
+                "59965bd7.087bf4"
+            ]
+        ]
+    },
+    {
+        "id": "b6edaae8.db545",
+        "type": "debug",
+        "z": "7517ba09.c831bc",
+        "name": "",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1310,
+        "y": 780,
+        "wires": []
+    },
+    {
+        "id": "822fa270.6a3328",
+        "type": "delay",
+        "z": "7517ba09.c831bc",
+        "name": "",
+        "pauseType": "rate",
+        "timeout": "5",
+        "timeoutUnits": "seconds",
+        "rate": "1",
+        "nbRateUnits": "3",
+        "rateUnits": "second",
+        "randomFirst": "1",
+        "randomLast": "5",
+        "randomUnits": "seconds",
+        "drop": false,
+        "x": 340,
+        "y": 780,
+        "wires": [
+            [
+                "20c371e9.b3e7b6"
+            ]
+        ]
+    },
+    {
+        "id": "59965bd7.087bf4",
+        "type": "link out",
+        "z": "7517ba09.c831bc",
+        "name": "Clustermap in",
+        "links": [
+            "3927a622.87a97a"
+        ],
+        "x": 1275,
+        "y": 740,
+        "wires": []
+    },
+    {
+        "id": "7690e608.a9dc",
+        "type": "ui_group",
+        "name": "Map",
+        "tab": "f9d40dc7.f018c",
+        "order": 1,
+        "disp": false,
+        "width": "20",
+        "collapse": false
+    },
+    {
+        "id": "1c67ed79.35b7bb",
+        "type": "ui_group",
+        "name": "Input",
+        "tab": "f9d40dc7.f018c",
+        "order": 2,
+        "disp": false,
+        "width": 6,
+        "collapse": false
+    },
+    {
+        "id": "4419a8e1.8268e",
+        "type": "ui_group",
+        "name": "output",
+        "tab": "f9d40dc7.f018c",
+        "order": 3,
+        "disp": true,
+        "width": 6,
+        "collapse": true
+    },
+    {
+        "id": "f9d40dc7.f018c",
+        "type": "ui_tab",
+        "name": "Clustertool",
+        "icon": "dashboard",
+        "disabled": false,
+        "hidden": false
+    }
+]
